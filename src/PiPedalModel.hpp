@@ -55,6 +55,7 @@ namespace pipedal
     class Updater;
     class AvahiService;
     class Lv2PluginState;
+    class FootswitchHandler;
 
     class IPiPedalModelSubscriber
     {
@@ -152,6 +153,9 @@ namespace pipedal
         std::vector<MidiBinding> systemMidiBindings;
 
         std::unique_ptr<AvahiService> avahiService;
+
+        std::unique_ptr<FootswitchHandler> footswitchHandler;
+
         uint16_t webPort;
 
         PiPedalAlsaDevices &alsaDevices = PiPedalAlsaDevices::instance();

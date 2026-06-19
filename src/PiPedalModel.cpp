@@ -25,6 +25,7 @@
 #include <sched.h>
 #include "PiPedalModel.hpp"
 #include "AudioHost.hpp"
+#include "FootswitchHandler.hpp"
 #include "Lv2Log.hpp"
 #include <set>
 #include "PiPedalConfiguration.hpp"
@@ -130,6 +131,14 @@ void PrepareSnapshostsForSave(Pedalboard &pedalboard)
 
 void PiPedalModel::Close()
 {
+    // Stop the footswitch thread *before* taking the mutex: its callbacks
+    // (SetSnapshot/NextBank/PreviousBank) acquire this same mutex, so joining
+    // it while holding the lock could deadlock.
+    if (footswitchHandler)
+    {
+        footswitchHandler->Stop();
+    }
+
     std::unique_ptr<AudioHost> oldAudioHost;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex);
@@ -171,6 +180,10 @@ void PiPedalModel::Close()
 
 PiPedalModel::~PiPedalModel()
 {
+    if (footswitchHandler)
+    {
+        footswitchHandler->Stop(); // join the input thread before we tear down.
+    }
     CancelNetworkChangingTimer();
     hotspotManager = nullptr; // turn off the hotspot.
 
@@ -462,6 +475,27 @@ void PiPedalModel::Load()
     }
 
     RestartAudio();
+
+    // Hardware footswitches (gpio-keys on the Node board); see FootswitchHandler
+    // for the gesture map. NextPreset/PreviousPreset expect the caller to hold
+    // the model mutex (unlike SetSnapshot/NextBank, which lock it themselves), so
+    // the preset callbacks lock it here; the mutex is recursive, so this is safe.
+    FootswitchHandler::Callbacks footswitchCallbacks;
+    footswitchCallbacks.onSnapshot = [this](int snapshotIndex) { this->SetSnapshot(snapshotIndex); };
+    footswitchCallbacks.onPreviousPreset = [this]() {
+        std::lock_guard<std::recursive_mutex> lock(mutex);
+        this->PreviousPreset();
+    };
+    footswitchCallbacks.onNextPreset = [this]() {
+        std::lock_guard<std::recursive_mutex> lock(mutex);
+        this->NextPreset();
+    };
+    footswitchCallbacks.onPreviousBank = [this]() { this->PreviousBank(); };
+    footswitchCallbacks.onNextBank = [this]() { this->NextBank(); };
+    this->footswitchHandler = std::make_unique<FootswitchHandler>(std::move(footswitchCallbacks));
+    this->footswitchHandler->Start();
+    // Show the snapshot that is already selected at startup.
+    this->footswitchHandler->SetSelectedSnapshot((int)this->pedalboard.selectedSnapshot());
 }
 
 IPiPedalModelSubscriber *PiPedalModel::GetNotificationSubscriber(int64_t clientId)
@@ -680,9 +714,11 @@ void PiPedalModel::FireBanksChanged(int64_t clientId)
 void PiPedalModel::FirePedalboardChanged(int64_t clientId, bool loadAudioThread)
 {
     SubscriberList subscribers;
+    int64_t selectedSnapshot = -1;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex);
         subscribers = this->subscribers;
+        selectedSnapshot = this->pedalboard.selectedSnapshot();
 
         if (loadAudioThread)
         {
@@ -700,6 +736,12 @@ void PiPedalModel::FirePedalboardChanged(int64_t clientId, bool loadAudioThread)
     for (auto &subscriber : subscribers)
     {
         subscriber->OnPedalboardChanged(clientId, this->pedalboard);
+    }
+
+    // Reflect the selected snapshot on the front-panel LEDs (no-op if absent).
+    if (this->footswitchHandler)
+    {
+        this->footswitchHandler->SetSelectedSnapshot((int)selectedSnapshot);
     }
 }
 void PiPedalModel::SetPedalboard(int64_t clientId, Pedalboard &pedalboard)
