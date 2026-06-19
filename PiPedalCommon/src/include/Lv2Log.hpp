@@ -20,6 +20,7 @@
 #pragma once
 #include <stdarg.h>
 #include <chrono>
+#include <string>
 
 namespace pipedal
 {

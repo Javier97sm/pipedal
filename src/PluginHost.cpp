@@ -54,6 +54,10 @@
 
 #include "Locale.hpp"
 
+#ifndef LV2_CORE__enabled
+#define LV2_CORE__enabled LV2_CORE_URI "#enabled"
+#endif
+
 using namespace pipedal;
 
 #define MAP_CHECK()                                                           \

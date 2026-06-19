@@ -2336,7 +2336,8 @@ namespace pipedal
                 }
             }};
 
-        std::string alsaDeviceName = jackServerSettings.GetAlsaInputDevice();
+        std::string alsaInputDevice = jackServerSettings.GetAlsaInputDevice();
+        std::string alsaOutputDevice = jackServerSettings.GetAlsaOutputDevice();
         bool result = false;
 
         try
@@ -2344,8 +2345,8 @@ namespace pipedal
             int err;
             for (int retry = 0; retry < 4; ++retry)
             {
-                err = snd_pcm_open(&playbackHandle, alsaDeviceName.c_str(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
-                if (err < 0) // field report of a device that is present, but won't immediately open.
+                err = snd_pcm_open(&playbackHandle, alsaOutputDevice.c_str(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
+                if (err < 0)
                 {
                     sleep(1);
                     continue;
@@ -2354,13 +2355,13 @@ namespace pipedal
             }
             if (err < 0)
             {
-                throw PiPedalStateException(SS(alsaDeviceName << " playback device not found. "
+                throw PiPedalStateException(SS(alsaOutputDevice << " playback device not found. "
                                                               << "(" << snd_strerror(err) << ")"));
             }
 
             for (int retry = 0; retry < 15; ++retry)
             {
-                err = snd_pcm_open(&captureHandle, alsaDeviceName.c_str(), SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
+                err = snd_pcm_open(&captureHandle, alsaInputDevice.c_str(), SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
                 if (err == -EBUSY)
                 {
                     sleep(1);
@@ -2369,7 +2370,7 @@ namespace pipedal
                 break;
             }
             if (err < 0)
-                throw PiPedalStateException(SS(alsaDeviceName << " capture device not found."));
+                throw PiPedalStateException(SS(alsaInputDevice << " capture device not found."));
 
             if (snd_pcm_hw_params_malloc(&playbackHwParams) < 0)
             {
@@ -2383,8 +2384,8 @@ namespace pipedal
             snd_pcm_hw_params_any(playbackHandle, playbackHwParams);
             snd_pcm_hw_params_any(captureHandle, captureHwParams);
 
-            SetPreferredAlsaFormat(alsaDeviceName, "capture", captureHandle, captureHwParams);
-            SetPreferredAlsaFormat(alsaDeviceName, "output", playbackHandle, playbackHwParams);
+            SetPreferredAlsaFormat(alsaInputDevice, "capture", captureHandle, captureHwParams);
+            SetPreferredAlsaFormat(alsaOutputDevice, "output", playbackHandle, playbackHwParams);
 
             unsigned int sampleRate = jackServerSettings.GetSampleRate();
             err = snd_pcm_hw_params_set_rate_near(playbackHandle, playbackHwParams, &sampleRate, 0);

@@ -204,7 +204,7 @@ std::vector<AlsaDeviceInfo> PiPedalAlsaDevices::GetAlsaDevices()
 
             AlsaDeviceInfo info;
             info.cardId_ = procAlsaDevice.cardId;
-            info.id_ = std::string("hw:") + snd_ctl_card_info_get_id(alsaInfo);
+            info.id_ = std::string("hw:") + snd_ctl_card_info_get_id(alsaInfo) + "," + std::to_string(procAlsaDevice.subdeviceId);
             const char *driver = snd_ctl_card_info_get_driver(alsaInfo);
             (void)driver;
 
@@ -271,16 +271,22 @@ std::vector<AlsaDeviceInfo> PiPedalAlsaDevices::GetAlsaDevices()
             }
 
 
+            // Address the specific PCM device (hw:<card>,<device>) rather than the
+            // card as a whole, so cards that expose several PCM devices (or
+            // asymmetric capture/playback device layouts) are each individually
+            // selectable.
+            std::string deviceId = SS(cardId << "," << procAlsaDevice.subdeviceId);
+
             snd_pcm_t *captureDevice = nullptr;
             snd_pcm_t *playbackDevice = nullptr;
-            auto rc = snd_pcm_open(&captureDevice, cardId.c_str(), SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
+            auto rc = snd_pcm_open(&captureDevice, deviceId.c_str(), SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
             bool captureOk =  rc == 0;
 
             Finally ffCaptureDevice{
                 [captureDevice]
                 { if (captureDevice) snd_pcm_close(captureDevice); }};
 
-            rc  = snd_pcm_open(&playbackDevice, cardId.c_str(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
+            rc  = snd_pcm_open(&playbackDevice, deviceId.c_str(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
             bool playbackOk = rc == 0;
 
             Finally ffPlaybackDevice{
