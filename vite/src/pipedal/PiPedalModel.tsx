@@ -573,6 +573,11 @@ export class PiPedalModel //implements PiPedalModel
 
     showStatusMonitor: ObservableProperty<boolean> = new ObservableProperty<boolean>(true);
 
+    // Incrementing counter the server bumps to request a jump to the Performance
+    // view (e.g. from the FS2+FS3 hardware footswitch chord). Observers act on
+    // any change; the initial value of 0 must be ignored.
+    showPerformViewRequest: ObservableProperty<number> = new ObservableProperty<number>(0);
+
     pedalboard: ObservableProperty<Pedalboard> = new ObservableProperty<Pedalboard>(new Pedalboard());
     presetChanged: ObservableProperty<boolean> = new ObservableProperty<boolean>(false);
     selectedSnapshot: ObservableProperty<number> = new ObservableProperty<number>(-1);
@@ -886,6 +891,9 @@ export class PiPedalModel //implements PiPedalModel
             if (!this.compareFavorites(favorites, this.favorites.get())) {
                 this.favorites.set(favorites);
             }
+        } else if (message === "onShowPerformView") {
+            // Bump the counter so observers fire on every request.
+            this.showPerformViewRequest.set(this.showPerformViewRequest.get() + 1);
         } else if (message === "onShowStatusMonitorChanged") {
             let value = body as boolean;
             this.showStatusMonitor.set(value);

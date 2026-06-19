@@ -80,18 +80,20 @@ namespace pipedal
     //   switch 1..4 (single tap)          -> snapshot 1..4
     //   switch 1 + switch 2 (chord)       -> previous preset
     //   switch 3 + switch 4 (chord)       -> next preset
+    //   switch 2 + switch 3 (chord)       -> open the Performance view
     //   switch 1 long-press (HOLD_MS)     -> previous bank
     //   switch 4 long-press (HOLD_MS)     -> next bank
     //
     // A chord is recognised by physical overlap: when the second switch of a
-    // pair goes down while the first is still held, the preset action fires
+    // pair goes down while the first is still held, the action fires
     // immediately. This is independent of how far apart (in time) the two
     // presses land, which is what makes it robust for a foot stomping two
-    // switches at once. A lone switch commits its snapshot when it is released
-    // (a tap); the two outer switches instead fire their bank action if held
-    // past the long-press threshold (in which case the later release is
-    // ignored). A switch that has been consumed by a chord or long-press does
-    // not also fire a snapshot.
+    // switches at once. The inner pair (FS2+FS3) jumps the web UI to the
+    // Performance view regardless of where it currently is. A lone switch
+    // commits its snapshot when it is released (a tap); the two outer switches
+    // instead fire their bank action if held past the long-press threshold (in
+    // which case the later release is ignored). A switch that has been consumed
+    // by a chord or long-press does not also fire a snapshot.
     //
     // The handler owns a background thread that discovers and reads the input
     // device; if no matching device is present it simply idles and retries, so
@@ -104,6 +106,7 @@ namespace pipedal
             std::function<void(int snapshotIndex)> onSnapshot; // 0-based
             std::function<void()> onPreviousPreset;
             std::function<void()> onNextPreset;
+            std::function<void()> onShowPerformView;
             std::function<void()> onPreviousBank;
             std::function<void()> onNextBank;
         };

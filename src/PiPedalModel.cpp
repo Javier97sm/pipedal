@@ -490,6 +490,7 @@ void PiPedalModel::Load()
         std::lock_guard<std::recursive_mutex> lock(mutex);
         this->NextPreset();
     };
+    footswitchCallbacks.onShowPerformView = [this]() { this->ShowPerformView(); };
     footswitchCallbacks.onPreviousBank = [this]() { this->PreviousBank(); };
     footswitchCallbacks.onNextBank = [this]() { this->NextBank(); };
     this->footswitchHandler = std::make_unique<FootswitchHandler>(std::move(footswitchCallbacks));
@@ -1637,6 +1638,19 @@ WifiDirectConfigSettings PiPedalModel::GetWifiDirectConfigSettings()
     return this->storage.GetWifiDirectConfigSettings();
 }
 
+void PiPedalModel::ShowPerformView()
+{
+    // Broadcast to all connected clients; harmless if there are none.
+    std::vector<IPiPedalModelSubscriber::ptr> t;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex);
+        t = std::vector<IPiPedalModelSubscriber::ptr>{subscribers.begin(), subscribers.end()};
+    }
+    for (auto &subscriber : t)
+    {
+        subscriber->OnShowPerformView();
+    }
+}
 void PiPedalModel::SetShowStatusMonitor(bool show)
 {
     {

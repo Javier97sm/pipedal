@@ -291,22 +291,26 @@ void FootswitchHandler::HandleKey(int switchIndex, bool pressed, clock::time_poi
     if (switchIndex < 0 || switchIndex >= SWITCH_COUNT)
         return;
 
-    // Pairs are (0,1) -> previous preset and (2,3) -> next preset.
-    const int partner = switchIndex ^ 1;
-
     if (pressed)
     {
         // Ignore repeats / duplicate down events.
         if (state_[switchIndex] != SwitchState::Released)
             return;
 
-        if (state_[partner] == SwitchState::Down)
+        // Chord pairs (recognised when the second switch goes down while the
+        // first is still held):
+        //   (0,1) FS1+FS2 -> previous preset
+        //   (2,3) FS3+FS4 -> next preset
+        //   (1,2) FS2+FS3 -> open the Performance view
+        const int presetPartner = switchIndex ^ 1; // 0<->1, 2<->3
+        const int innerPartner = (switchIndex == 1) ? 2 : (switchIndex == 2) ? 1 : -1;
+
+        if (state_[presetPartner] == SwitchState::Down)
         {
-            // The partner is still physically held: this is a chord. Mark both
-            // consumed so their later releases do not fire snapshots and any
+            // Mark both consumed so their releases do not fire snapshots and any
             // pending long-press is abandoned.
             state_[switchIndex] = SwitchState::Consumed;
-            state_[partner] = SwitchState::Consumed;
+            state_[presetPartner] = SwitchState::Consumed;
             if (switchIndex < 2)
             {
                 Lv2Log::info("FootswitchHandler: chord -> previous preset.");
@@ -319,6 +323,14 @@ void FootswitchHandler::HandleKey(int switchIndex, bool pressed, clock::time_poi
                 if (callbacks_.onNextPreset)
                     callbacks_.onNextPreset();
             }
+        }
+        else if (innerPartner >= 0 && state_[innerPartner] == SwitchState::Down)
+        {
+            state_[switchIndex] = SwitchState::Consumed;
+            state_[innerPartner] = SwitchState::Consumed;
+            Lv2Log::info("FootswitchHandler: chord -> performance view.");
+            if (callbacks_.onShowPerformView)
+                callbacks_.onShowPerformView();
         }
         else
         {

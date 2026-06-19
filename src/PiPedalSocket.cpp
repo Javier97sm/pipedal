@@ -2359,6 +2359,11 @@ private:
         Send("onShowStatusMonitorChanged", show);
     }
 
+    virtual void OnShowPerformView()
+    {
+        Send("onShowPerformView", true);
+    }
+
     virtual void OnChannelRouterSettingsChanged(int64_t clientId, const ChannelRouterSettings &channelRouterSettings)
     {
         ChannelRouterSettingsChangedBody body(clientId, channelRouterSettings);

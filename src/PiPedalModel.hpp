@@ -91,6 +91,8 @@ namespace pipedal
         virtual void OnGovernorSettingsChanged(const std::string &governor) = 0;
         virtual void OnFavoritesChanged(const std::map<std::string, bool> &favorites) = 0;
         virtual void OnShowStatusMonitorChanged(bool show) = 0;
+        // Request that connected clients jump to the Performance view.
+        virtual void OnShowPerformView() = 0;
         virtual void OnSystemMidiBindingsChanged(const std::vector<MidiBinding> &bindings) = 0;
         virtual void OnNotifyPathPatchPropertyChanged(int64_t instanceId, const std::string &pathPatchPropertyString, const std::string &atomString) = 0;
 
@@ -447,6 +449,9 @@ namespace pipedal
 
         void SetShowStatusMonitor(bool show);
         bool GetShowStatusMonitor();
+
+        // Tell connected web clients to jump to the Performance view.
+        void ShowPerformView();
 
         void SetWifiConfigSettings(const WifiConfigSettings &wifiConfigSettings);
         WifiConfigSettings GetWifiConfigSettings();

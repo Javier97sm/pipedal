@@ -394,6 +394,7 @@ export
         this.handleCloseAlert = this.handleCloseAlert.bind(this);
         this.banksChangedHandler = this.banksChangedHandler.bind(this);
         this.showStatusMonitorHandler = this.showStatusMonitorHandler.bind(this);
+        this.showPerformViewRequestHandler = this.showPerformViewRequestHandler.bind(this);
         this.handleZoomedUiControlChanged = this.handleZoomedUiControlChanged.bind(this);
     }
 
@@ -563,6 +564,13 @@ export
             showStatusMonitor: this.model_.showStatusMonitor.get()
         });
     }
+    showPerformViewRequestHandler(requestCount: number) {
+        // addOnChangedHandler() fires once with the initial value (0); only a
+        // real server request (counter > 0) should open the Performance view.
+        if (requestCount > 0) {
+            this.setState({ performanceView: true });
+        }
+    }
     banksChangedHandler() {
         this.setState({
             banks: this.model_.banks.get()
@@ -609,6 +617,7 @@ export
         this.model_.alertMessage.addOnChangedHandler(this.alertMessageChangedHandler);
         this.model_.banks.addOnChangedHandler(this.banksChangedHandler);
         this.model_.showStatusMonitor.addOnChangedHandler(this.showStatusMonitorHandler);
+        this.model_.showPerformViewRequest.addOnChangedHandler(this.showPerformViewRequestHandler);
         this.model_.promptForUpdate.addOnChangedHandler(this.promptForUpdateHandler);
         this.alertMessageChangedHandler();
 
@@ -654,6 +663,7 @@ export
         this.model_.pedalboard.removeOnChangedHandler(this.presetChangedHandler);
         this.model_.banks.removeOnChangedHandler(this.banksChangedHandler);
         this.model_.banks.removeOnChangedHandler(this.showStatusMonitorHandler);
+        this.model_.showPerformViewRequest.removeOnChangedHandler(this.showPerformViewRequestHandler);
 
         this.model_.close();
 
